@@ -1,0 +1,5 @@
+data/*
+model/*
+wandb/*
+lightning_logs/*
+ssl_ica_lt/*
