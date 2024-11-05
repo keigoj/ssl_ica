@@ -3,3 +3,5 @@ model/*
 wandb/*
 lightning_logs/*
 ssl_ica_lt/*
+__pycache__/*
+log/*

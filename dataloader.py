@@ -6,13 +6,22 @@ import numpy as np
 import math
 
 class MyDataLoader(pl.LightningDataModule):
-    def __init__(self, train_manifest_path, valid_manifest_path, test_manifest_path, batch_size=8, ngpu=1) -> None:
+    def __init__(
+            self,
+            train_manifest_path,
+            valid_manifest_path,
+            test_manifest_path,
+            batch_size=8,
+            ngpu=1,
+            processor=None
+        ) -> None:
         super().__init__()
         self.train_manifest_path = train_manifest_path
         self.valid_manifest_path = valid_manifest_path
         self.test_manifest_path = test_manifest_path
         self.batch_size = batch_size
         self.ngpu = ngpu
+        self.processor = processor
         self.train_dataset = DatasetFromManifest(self.train_manifest_path)
     
     def setup(self, stage: str) -> None:
@@ -37,21 +46,13 @@ class MyDataLoader(pl.LightningDataModule):
     
     def predict_dataloader(self) -> EVAL_DATALOADERS:
         return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=self.batch_idx_fn)
-    
+
     def batch_idx_fn(self, batch):
         waves, texts = list(zip(*batch))
-        max_len = max(len(wave) for wave in waves)
-        padded_waves = []
-        masks = []
+        waves = [np.array(wave) for wave in waves]
+        padded_waves = self.processor(waves, sampling_rate=16000, return_attention_mask=True, return_tensors="pt", padding=True)
 
-        for wave in waves:
-            pad_width = max_len - len(wave)
-            padded_wave = np.pad(wave, (0, pad_width), mode="constant", constant_values=0)
-            padded_waves.append(padded_wave)
-        
-        waves = np.stack(padded_waves)
-        
-        return waves, texts
+        return padded_waves, texts
 
     def get_num_training_steps_per_epoch(self):
         return math.ceil(len(self.train_dataset) / (self.batch_size * self.ngpu))
