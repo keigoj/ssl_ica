@@ -5,7 +5,10 @@ from multiprocessing import Value
 from typing import Dict
 from torch import Tensor
 from pytorch_lightning.utilities import rank_zero_info
+<<<<<<< HEAD
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2CTCTokenizer, Wav2Vec2Processor
+=======
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
 
 import torch
 import os
@@ -13,7 +16,10 @@ import re
 import argparse
 import lightning.pytorch as pl
 import shutil
+<<<<<<< HEAD
 import json
+=======
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
 
 
 class HuggingFaceModelCheckpoint(pl.callbacks.ModelCheckpoint):
@@ -82,8 +88,12 @@ class HuggingFaceModelCheckpoint(pl.callbacks.ModelCheckpoint):
 
 def get_args():
     parser = argparse.ArgumentParser()
+<<<<<<< HEAD
     parser.add_argument("--method", type=str, choices=["base", "att", "att_ica", "interctc"], required=True)
     parser.add_argument("--model", type=str, choices=["wav2vec2", "hubert"], required=True)
+=======
+    parser.add_argument("--method", type=str, choices=["base", "att", "att_ica"], required=True)
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
     parser.add_argument("--name", type=str, default="")
     parser.add_argument("--ngpu", type=int, default=4)
     parser.add_argument("--ica_path", type=str, default=None)
@@ -95,11 +105,18 @@ def main():
 
     # set training settings
     train_method = args.method
+<<<<<<< HEAD
     vocab_path = "./data/vocab_subword5000.json"
+=======
+    wandb_name = f"{train_method}_{args.name}" if len(args.name) > 0 else f"{train_method}"
+    output_model_dir = f"model/{wandb_name}"
+    vocab_path = "./data/vocab_subword.json"
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
     phn_vocab_path = "./data/vocab_phoneme.json"
     lr = 1e-4
     batch_size = 16
     num_epochs = 30
+<<<<<<< HEAD
     warmup_steps = 300
     ngpu = args.ngpu
     wandb_projct = "hubert-ft"
@@ -109,12 +126,16 @@ def main():
     else:
         wandb_name = f"{train_method}_lr{lr}_warmup{warmup_steps}_epoch{num_epochs}"
     output_model_dir = f"model/{wandb_name}"
+=======
+    ngpu = args.ngpu
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
 
     # set the used dataset paths
     train_dataset_path = ["data/train-clean-100-manifest.json"]
     valid_dataset_path = ["data/dev-manifest.json"]
     test_dataset_path =  ["data/test-clean-manifest.json", "data/test-other-manifest.json"]
     
+<<<<<<< HEAD
     # prepare the vocab list
     if not os.path.exists(vocab_path):
         with open("./data/bpe_unigram5000/tokens.txt", "r") as f:
@@ -136,18 +157,25 @@ def main():
         phn_tokenizer = Wav2Vec2CTCTokenizer(phn_vocab_path, unk_token="[UNK]", pad_token="[PAD]", word_delimiter_token="|")
         phn_processor = Wav2Vec2Processor(feature_extractor=feature_extractor, tokenizer=phn_tokenizer)
 
+=======
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
     data_module = MyDataLoader(
         train_dataset_path, 
         valid_dataset_path, 
         test_dataset_path, 
         batch_size=batch_size,
+<<<<<<< HEAD
         ngpu=ngpu,
         processor=processor,
+=======
+        ngpu=ngpu
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
     )
 
     num_training_steps = data_module.get_num_training_steps_per_epoch() * num_epochs # 1epoch1gpuあたりのステップ数 * エポック数 190244* epochs
     lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval="step")
     
+<<<<<<< HEAD
     if args.model == "wav2vec2":
         pretrained_model = "facebook/wav2vec2-base"
         model = Wav2vec2Module(
@@ -186,6 +214,21 @@ def main():
         raise ValueError(f"Invalid model name: {args.model}")
 
     wandb_logger = WandbLogger(project=wandb_projct, name=wandb_name)
+=======
+    model = Wav2vec2Module(
+        model_id=output_model_dir, 
+        vocab_path=vocab_path,
+        phn_vocab_path=phn_vocab_path,
+        train_method=train_method,
+        lr=lr, 
+        batch_size=batch_size, 
+        num_training_steps=num_training_steps, 
+        ngpu=ngpu,
+        ica_path=args.ica_path,
+    )
+
+    wandb_logger = WandbLogger(project="ssl_ica_lt", name=wandb_name)
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
     model_checkpoint_callback = HuggingFaceModelCheckpoint(
         monitor="val/wer",
         dirpath=output_model_dir,
@@ -203,7 +246,11 @@ def main():
             max_epochs=num_epochs,
             callbacks=[model_checkpoint_callback, lr_monitor],
             logger=wandb_logger,
+<<<<<<< HEAD
             val_check_interval=0.25,
+=======
+            val_check_interval=0.5,
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
             accumulate_grad_batches=1,
             precision=32,
             devices=ngpu,
@@ -215,8 +262,13 @@ def main():
             max_epochs=num_epochs,
             callbacks=[model_checkpoint_callback, lr_monitor],
             logger=wandb_logger,
+<<<<<<< HEAD
             val_check_interval=0.25,
             accumulate_grad_batches=1,
+=======
+            val_check_interval=0.5,
+            accumulate_grad_batches=2,
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
             precision=32,
             devices=ngpu,
         )

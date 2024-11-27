@@ -1,5 +1,6 @@
 from typing import Optional
 from transformers import Wav2Vec2ForCTC
+<<<<<<< HEAD
 from transformers.modeling_outputs import CausalLMOutput
 from typing import Optional, Tuple, Union
 import torch
@@ -104,6 +105,12 @@ class MultiHeadedAttention(nn.Module):
         q, k, v = self.forward_qkv(query, key, value)
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
         return self.forward_attention(v, scores, mask)
+=======
+import torch
+import torch.nn as nn
+from transformers.modeling_outputs import CausalLMOutput
+from typing import Optional, Tuple, Union
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
 
 
 class MultiHeadAttentionLayer(nn.Module):
@@ -176,7 +183,11 @@ class MultiHeadAttentionLayerForICA(MultiHeadAttentionLayer):
             n_head,
             n_feat,
             n_chead=4,
+<<<<<<< HEAD
             n_comp=100,
+=======
+            n_comp=300,
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
             dropout_rate=0.1
         ):
         super(MultiHeadAttentionLayerForICA, self).__init__(n_head, n_feat, dropout_rate)
@@ -245,6 +256,7 @@ class MultiHeadAttentionLayerForICA(MultiHeadAttentionLayer):
         return self.linear_out(ct)
 
 
+<<<<<<< HEAD
 class PredictionModule(nn.Module):
     def __init__(
             self,
@@ -271,6 +283,8 @@ class PredictionModule(nn.Module):
         return x
 
 
+=======
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
 class Wav2Vec2ForCTCWeighted(Wav2Vec2ForCTC):
     def __init__(
             self, 
@@ -278,6 +292,7 @@ class Wav2Vec2ForCTCWeighted(Wav2Vec2ForCTC):
             target_lang: Optional[str] = None,
             num_heads: int = 4,
             ica_path: str = None,
+<<<<<<< HEAD
             method: Optional[str] = None,
             two_stage_ft: bool = False,
         ):
@@ -315,6 +330,23 @@ class Wav2Vec2ForCTCWeighted(Wav2Vec2ForCTC):
             self.multihead_attn_low = MultiHeadAttentionLayerForICA(num_heads, config.hidden_size)
             self.multihead_attn_upp = MultiHeadAttentionLayerForICA(num_heads, config.hidden_size)
 
+=======
+        ):
+        super().__init__(config)
+        
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size)
+        self.lm_haed_phn = nn.Linear(config.hidden_size, config.phn_vocab_size)
+        self.conditioning_layer = nn.Linear(config.vocab_size, config.hidden_size)
+        self.conditioning_layer_phn = nn.Linear(config.phn_vocab_size, config.hidden_size)
+
+        if ica_path is not None:
+            self.multihead_attn_low = MultiHeadAttentionLayerForICA(num_heads, config.hidden_size)
+            self.multihead_attn_upp = MultiHeadAttentionLayerForICA(num_heads, config.hidden_size)
+        else:
+            self.multihead_attn_low = MultiHeadAttentionLayer(num_heads, config.hidden_size)
+            self.multihead_attn_upp = MultiHeadAttentionLayer(num_heads, config.hidden_size)
+    
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
     def compute_ctc_loss(self, log_probs, flattened_targets, input_lengths, target_lengths, blank):
         with torch.backends.cudnn.flags(enabled=False):
             loss = nn.functional.ctc_loss(
@@ -356,7 +388,10 @@ class Wav2Vec2ForCTCWeighted(Wav2Vec2ForCTC):
         if phn_labels.max() >= self.config.phn_vocab_size:
             raise ValueError(f"Phoneme label values must be <= vocab_size: {self.config.phn_vocab_size}")
 
+<<<<<<< HEAD
         # with torch.no_grad():
+=======
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
         outputs = self.wav2vec2(
             input_values,
             attention_mask=attention_mask,
@@ -365,12 +400,17 @@ class Wav2Vec2ForCTCWeighted(Wav2Vec2ForCTC):
             return_dict=return_dict,
         )
 
+<<<<<<< HEAD
         # weighting hidden states
+=======
+        # weighted sum
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
         last_hidden_states = outputs.last_hidden_state
         hidden_states = outputs.hidden_states[1:]
         num_block = len(hidden_states)
         mid = num_block // 2
 
+<<<<<<< HEAD
         if self.method == "att" or self.method == "att_ica":
             # lower layers
             if ica_mat is not None:
@@ -425,14 +465,64 @@ class Wav2Vec2ForCTCWeighted(Wav2Vec2ForCTC):
                 upper_weigted = self.multihead_attn_upp(final_query, upper_hidden_states, upper_hidden_states)
                 # logits_upp = self.upper_pred_module(upper_weigted)
                 logits_upp = self.lm_head(upper_weigted)
+=======
+        # lower layers
+        ctc_out_mid = nn.functional.log_softmax(self.lm_haed_phn(hidden_states[mid-1]), dim=-1)
+        mid_query = self.conditioning_layer_phn(ctc_out_mid)
+        
+        if ica_mat is not None:
+            # mid_query_ica = (mid_query - ica_mat["mean"][mid-1].transpose(0, 1)) @ ica_mat["trans_mat_from_right"][mid-1].transpose(0, 1) # (B, 1, T, C)
+            mid_query = mid_query.unsqueeze(1) # (B, 1, T, D)
+            mid_query_centerd = mid_query - ica_mat["mean"][mid-1] # (B, 1, T, D) - (1, T, D) -> (B, 1, T, D)
+            mid_query_pca = mid_query_centerd @ ica_mat["trans_mat_from_right"][mid-1] # (B, 1, T, D) x (D, C) -> (B, 1, T, C)
+            mid_query_ica = mid_query_pca @ ica_mat["W"][mid-1].transpose(0, 1) # (B, 1, T, C)
+
+            # lower_ica = (lower_hidden_states - ica_mat["mean"][:mid].transpose(0, 1)) @ ica_mat["trans_mat_from_right"][:mid] # (B, L, T, C)
+            lower_hidden_states = torch.stack(hidden_states[:mid], dim=1) # (B, L, T, D)
+            lower_centerd = lower_hidden_states - ica_mat["mean"][:mid] # (B, L, T, D) - (L, T, D) -> (B, L, T, D)
+            lower_pca = lower_centerd @ ica_mat["trans_mat_from_right"][:mid] # (B, L, T, D) x (B, L, D, C) -> (B, L, T, C)
+            lower_ica = lower_pca @ ica_mat["W"][:mid].transpose(-1, -2) # (B, L, T, C)
+            lower_weigted = self.multihead_attn_low(mid_query_ica.transpose(1, 2), lower_ica.transpose(1, 2), lower_hidden_states.transpose(1, 2)) # (B, T, D)
+        else:
+            mid_query = mid_query.unsqueeze(2) # (B, T, 1, D)
+            lower_hidden_states = torch.stack(hidden_states[:mid], dim=2) # (B, T, L, D)
+            lower_weigted = self.multihead_attn_low(mid_query, lower_hidden_states, lower_hidden_states) # (B, T, D)
+        logits_low = self.lm_haed_phn(lower_weigted)
+
+        # upper layers
+        ctc_out_final = nn.functional.log_softmax(self.lm_head(hidden_states[-1]), dim=-1)
+        final_query = self.conditioning_layer(ctc_out_final)
+
+        if ica_mat is not None:
+            final_query = final_query.unsqueeze(1) # (B, 1, T, D)
+            final_query_centerd = final_query - ica_mat["mean"][-1] # (B, 1, T, D) - (1, T, D) -> (B, 1, T, D)
+            final_query_pca = final_query_centerd @ ica_mat["trans_mat_from_right"][-1] # (B, 1, T, D) x (D, C) -> (B, 1, T, C)
+            final_query_ica = final_query_pca @ ica_mat["W"][mid-1].transpose(0, 1) # (B, 1, T, C)
+
+            upper_hidden_states = torch.stack(hidden_states[mid:], dim=1) # (B, L, T, D)
+            upper_centerd = upper_hidden_states - ica_mat["mean"][mid:] # (B, L, T, D) - (L, T, D) -> (B, L, T, D)
+            upper_pca = upper_centerd @ ica_mat["trans_mat_from_right"][mid:] # (B, L, T, D) x (B, L, D, C) -> (B, L, T, C)
+            upper_ica = upper_pca @ ica_mat["W"][mid:].transpose(-1, -2) # (B, L, T, C)
+            upper_weigted = self.multihead_attn_low(final_query_ica.transpose(1, 2), upper_ica.transpose(1, 2), upper_hidden_states.transpose(1, 2)) # (B, T, D)
+        else:
+            final_query = final_query.unsqueeze(2) # (B, T, 1, D)
+            upper_hidden_states = torch.stack(hidden_states[mid:], dim=2) # (B, T, L, D)
+            upper_weigted = self.multihead_attn_upp(final_query, upper_hidden_states, upper_hidden_states)
+        logits_upp = self.lm_head(upper_weigted)
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
 
         last_hidden_states = self.dropout(last_hidden_states)
         logits = self.lm_head(last_hidden_states)
 
         loss = None
+<<<<<<< HEAD
         low_loss = None
         upp_loss = None
         if labels is not None:
+=======
+        if labels is not None and phn_labels is not None:
+
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
             # retrieve loss input_lengths from attention_mask
             attention_mask = (
                 attention_mask if attention_mask is not None else torch.ones_like(input_values, dtype=torch.long)
@@ -445,6 +535,7 @@ class Wav2Vec2ForCTCWeighted(Wav2Vec2ForCTC):
             target_lengths = labels_mask.sum(-1)
             flattened_targets = labels.masked_select(labels_mask)
 
+<<<<<<< HEAD
             if self.method == "att" or self.method == "att_ica":
                 phn_labels_mask = phn_labels >= 0
                 phn_target_lengths = phn_labels_mask.sum(-1)
@@ -475,6 +566,23 @@ class Wav2Vec2ForCTCWeighted(Wav2Vec2ForCTC):
             log_probs = nn.functional.log_softmax(logits, dim=-1, dtype=torch.float32).transpose(0, 1)
             std_loss = self.compute_ctc_loss(log_probs, flattened_targets, input_lengths, target_lengths, self.config.pad_token_id)
 
+=======
+            phn_labels_mask = phn_labels >= 0
+            phn_target_lengths = phn_labels_mask.sum(-1)
+            phn_flattened_targets = phn_labels.masked_select(phn_labels_mask)
+
+            # ctc_loss doesn't support fp16
+            log_probs_low = nn.functional.log_softmax(logits_low, dim=-1, dtype=torch.float32).transpose(0, 1)
+            log_probs_upp = nn.functional.log_softmax(logits_upp, dim=-1, dtype=torch.float32).transpose(0, 1)
+            log_probs = nn.functional.log_softmax(logits, dim=-1, dtype=torch.float32).transpose(0, 1)
+
+            low_loss = self.compute_ctc_loss(log_probs_low, phn_flattened_targets, input_lengths, phn_target_lengths, self.config.phn_pad_token_id)
+            upp_loss = self.compute_ctc_loss(log_probs_upp, flattened_targets, input_lengths, target_lengths, self.config.pad_token_id)
+            std_loss = self.compute_ctc_loss(log_probs, flattened_targets, input_lengths, target_lengths, self.config.pad_token_id)
+            
+            # aux_loss = 0.25*low_loss + 0.75*upp_loss
+            aux_loss = (low_loss + upp_loss) / 2
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
             loss = (1 - lam) * std_loss + lam * aux_loss
 
         if not return_dict:
@@ -487,7 +595,10 @@ class Wav2Vec2ForCTCWeighted(Wav2Vec2ForCTC):
         return {
             "loss": loss,
             "logits": logits,
+<<<<<<< HEAD
             "aux_loss": aux_loss,
+=======
+>>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
             "low_loss": low_loss,
             "upp_loss": upp_loss,
             "hidden_states": None,

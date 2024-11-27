@@ -68,3 +68,6 @@ test_dataset_path =  ["data/test-clean-manifest.json", "data/test-other-manifest
 logger = logging.getLogger("test")
 logging.info("finished successfully")
 
+
+# Some weights of Wav2Vec2ForCTCWeighted were not initialized from the model checkpoint at /home/hojo/exp/ssl2/model/base_lr1e-4_warm300_30epoch_2/checkpoint-11596 and are newly initialized: ['multihead_attn_low.linear_k.weight', 'conditioning_layer_phn.weight', 'multihead_attn_upp.linear_out.bias', 'multihead_attn_upp.linear_v.bias', 'multihead_attn_upp.linear_k.weight', 'multihead_attn_upp.linear_out.weight', 'multihead_attn_upp.linear_k.bias', 'multihead_attn_upp.linear_v.weight', 'multihead_attn_low.linear_q.weight', 'multihead_attn_low.linear_out.bias', 'multihead_attn_low.linear_q.bias', 'multihead_attn_upp.linear_q.bias'
+# , 'conditioning_layer.bias', 'multihead_attn_low.linear_out.weight', 'lm_haed_phn.weight', 'multihead_attn_low.linear_v.weight', 'multihead_attn_upp.linear_q.weight', 'multihead_attn_low.linear_k.bias', 'multihead_attn_low.linear_v.bias', 'conditioning_layer_phn.bias', 'lm_haed_phn.bias', 'conditioning_layer.weight'] 
