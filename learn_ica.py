@@ -4,10 +4,7 @@ from torch.utils.data import DataLoader, SubsetRandomSampler
 from tqdm import tqdm
 from logging import FileHandler
 from dataclasses import dataclass
-<<<<<<< HEAD
 from typing import Union
-=======
->>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
 import torch.distributed as dist
 import torch
 import numpy as np
@@ -163,11 +160,7 @@ def torch_pca(X: torch.Tensor, n_components: int, batch_size: int = 10000, segme
 
 # ICA
 @torch.no_grad()
-<<<<<<< HEAD
 def torch_fdica(X: torch.Tensor, n_iterations: int, initial_W: torch.Tensor = None, cluster_env: ClusterEnv=None, eps: float = 1e-3): # eps 1e-10
-=======
-def torch_fdica(X: torch.Tensor, n_iterations: int, initial_W: torch.Tensor = None, eps: float = 1e-3):
->>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
     """FastICA for PyTorch tensor.
     
     Args:
@@ -182,7 +175,6 @@ def torch_fdica(X: torch.Tensor, n_iterations: int, initial_W: torch.Tensor = No
         Y: torch.Tensor, shape (n_frequencies, n_samples x n_components)
             Demixed features
     """
-<<<<<<< HEAD
     is_multigpu = (cluster_env is not None) and cluster_env.is_multigpu
 
     n_frequencies, n_samples, n_components = X.shape[0], X.shape[1], X.shape[2]
@@ -191,10 +183,6 @@ def torch_fdica(X: torch.Tensor, n_iterations: int, initial_W: torch.Tensor = No
         n_total_samples = cluster_env.all_reduce_sum_scalar(n_samples, dtype=torch.int64)
         n_samples = n_total_samples
 
-=======
-
-    n_frequencies, n_samples, n_components = X.shape[0], X.shape[1], X.shape[2]
->>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
     logging.info(f"n_frequencies: {n_frequencies}, n_samples: {n_samples}, n_components: {n_components}")
     
     def get_loss(W: torch.Tensor, X: torch.Tensor):
@@ -214,11 +202,8 @@ def torch_fdica(X: torch.Tensor, n_iterations: int, initial_W: torch.Tensor = No
     
     if initial_W is not None:
         W = initial_W.clone()
-<<<<<<< HEAD
         if is_multigpu:
             cluster_env.broadcast(W)
-=======
->>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
     else:
         W = torch.eye(n_components, dtype=X.dtype, device=X.device)[None,:,:].repeat(n_frequencies, 1, 1) # n_frequencies x n_components x n_components
     I = torch.eye(n_components, dtype=X.dtype, device=X.device)[None,:,:].repeat(n_frequencies, 1, 1) # n_frequencies x n_components x n_components
@@ -232,11 +217,8 @@ def torch_fdica(X: torch.Tensor, n_iterations: int, initial_W: torch.Tensor = No
             reciprocal_R_k.clamp_min_(eps) # n_frequencies x n_samples
             reciprocal_R_k.reciprocal_() # n_frequencies x n_samples
             V_k = torch.einsum('ftm,ft,ftn->fmn', X, reciprocal_R_k, X)/n_samples # n_frequencies x n_components x n_components
-<<<<<<< HEAD
             if is_multigpu:
                 cluster_env.all_reduce_sum(V_k)
-=======
->>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
             W[:, k, :] = torch.linalg.solve(W @ V_k, I[:, :, k]) # n_frequencies x n_components x 1
             W[:, k, :] *= (torch.einsum('fm,fmn,fn->f', W[:, k, :], V_k, W[:, k, :]) + eps).rsqrt()[:,None]
         loss_list.append(get_loss(W, X).item())
@@ -244,7 +226,6 @@ def torch_fdica(X: torch.Tensor, n_iterations: int, initial_W: torch.Tensor = No
     
     return W, Y, {"loss_list": np.array(loss_list)}
 
-<<<<<<< HEAD
 # IVA
 @torch.no_grad()
 def torch_iva(X: torch.Tensor, n_iterations: int=100, initial_W: torch.Tensor=None, W_update_algo: str="IP", cluster_env: ClusterEnv=None, eps: float=1e-8) -> Union[torch.Tensor, torch.Tensor, dict]:
@@ -320,8 +301,6 @@ def torch_iva(X: torch.Tensor, n_iterations: int=100, initial_W: torch.Tensor=No
         loss_list.append(get_loss(W,Y).item())
     return W, Y, {"loss_list": np.array(loss_list)}
 
-=======
->>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
 def learn_icamagaxis_by_torch(
     ssl_feat_dir,
     ica_path,
@@ -371,7 +350,6 @@ def learn_icamagaxis_by_torch(
     torch.save({"trans_mat_from_right": trans_mat_from_right, "mean": mean, "W": W}, ica_path)
     logging.info("finished successfully")
 
-<<<<<<< HEAD
 def learn_iva_by_torch(
     ssl_feat_dir,
     ica_path,
@@ -430,8 +408,6 @@ def learn_iva_by_torch(
     torch.save({"trans_mat_from_right": trans_mat_from_right, "mean": mean, "W": W}, iva_path)
     logging.info("finished successfully")
 
-=======
->>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train_path", type=str)
@@ -442,21 +418,14 @@ def get_args():
 
 def main():
     train_path = "data/train-clean-100-manifest.json"
-<<<<<<< HEAD
     percent = 0.05
     ssl_feat_dir = f"data/ssl_features/subset{percent}"
     n_clusters = 100
     method = "iva"
-=======
-    percent = 0.01
-    ssl_feat_dir = f"data/ssl_features/subset{percent}"
-    n_clusters = 300
->>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
 
     if not os.path.exists(f"{ssl_feat_dir}/layer_1.pt"):
         dump_ssl_feature(train_path, ssl_feat_dir, percent)
     
-<<<<<<< HEAD
     if method == "ica":
         learn_icamagaxis_by_torch(
             ssl_feat_dir=ssl_feat_dir,
@@ -478,17 +447,6 @@ def main():
         )
     else:
         raise ValueError(f"Not implimentation: {method}")
-=======
-    learn_icamagaxis_by_torch(
-        ssl_feat_dir=ssl_feat_dir,
-        ica_path=f"model/ica/ica_{n_clusters}.pt", 
-        n_clusters=n_clusters, 
-        max_iter=100, 
-        batch_size=10000, 
-        device="cuda"
-    )
     
->>>>>>> 515fa1612f52a5ab0198158e76cfd9e9414f2ec2
-
 if __name__ == "__main__":
     main()
